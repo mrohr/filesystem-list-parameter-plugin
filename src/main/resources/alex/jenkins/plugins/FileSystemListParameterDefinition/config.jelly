@@ -38,6 +38,7 @@
 			<option value="ALL">ALL</option>
 			<option value="DIRECTORY">DIRECTORY</option>
 			<option value="FILE">FILE</option>
+			<option value="RECURSIVE">RECURSIVE</option>
 	      </select>
         </j:when>
         <j:otherwise>		

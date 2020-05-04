@@ -10,12 +10,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import javax.annotation.Nullable;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -48,7 +51,7 @@ public class FileSystemListParameterDefinition extends ParameterDefinition {
     public static final String MASTER = "master";
 
 	public static enum FsObjectTypes implements java.io.Serializable {
-		ALL, DIRECTORY, FILE, SYMLINK
+		ALL, DIRECTORY, FILE, SYMLINK, RECURSIVE
 	}
 
 	@Extension
@@ -248,6 +251,9 @@ public class FileSystemListParameterDefinition extends ParameterDefinition {
 						case FILE:
 							createFileMap(listFiles, map);
 							break;
+						case RECURSIVE:
+							createFileMap(listFiles, map, "");
+						break;
 						default:
 							createAllObjectsMap(listFiles, map);
 							break;
@@ -369,12 +375,23 @@ public class FileSystemListParameterDefinition extends ParameterDefinition {
 		}
 	}
 
-	private void createFileMap(File[] listFiles, Map<String, Long> target) throws IOException {
-
+	private void createFileMap(File[] listFiles, Map<String, Long> target ) throws IOException {
+		createFileMap(listFiles, target, null);
+	}
+	private void createFileMap(File[] listFiles, Map<String, Long> target, @Nullable String baseDir) throws IOException {
 		for (File file : listFiles) {
-			if (!file.isHidden() && file.isFile() && !isSymlink(file) && isPatternMatching(file.getName())) {
-				target.put(file.getName(), file.lastModified());
-				LOGGER.finest("add " + file);
+			if (!file.isHidden() && !isSymlink(file) ) {
+				if(file.isFile() && isPatternMatching(file.getName())) {
+					String name = file.getName();
+					if(baseDir != null) {
+						name = FilenameUtils.concat(baseDir, name);
+					}
+					target.put(name, file.lastModified());
+					LOGGER.finest("add " + file);
+				}else if(file.isDirectory() && baseDir != null)  {
+					createFileMap(Objects.requireNonNull(file.listFiles()), target,
+							FilenameUtils.concat(baseDir, file.getName()));
+				}
 			}
 		}
 	}
